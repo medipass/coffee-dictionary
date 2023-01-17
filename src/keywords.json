@@ -1,0 +1,38 @@
+[
+  {
+    "keyword": "chemex",
+    "categories": [
+      "brew"
+    ],
+    "description": "A trademarked brewing method, using a distinct apparatus made from glass, wood, and leather. Coffee grinds are seated in a paper filter at the top of the device. Water is slowly poured over the grinds, allowing the brewed coffee to drip through the filter and into the bottom of the carafe."
+  },
+  {
+    "keyword": "ethiopia",
+    "categories": [
+      "origin"
+    ],
+    "description": "All varieties of Arabica coffee plants are thought to have originated from Ethiopia."
+  },
+  {
+    "keyword": "expresso",
+    "categories": [
+      "brew",
+      "drink"
+    ],
+    "description": "A brew made by forcing hot, pressurised water through fine coffee grinds. The pressure creates a yellow-brown layer on the surface of the liquid, called the \"crema\"."
+  },
+  {
+    "keyword": "flat white",
+    "categories": [
+      "drink"
+    ],
+    "description": "A double-shot expresso with steamed milk that has been stretched to maximise the amount of microbubbles. Served in a 6oz cup."
+  },
+  {
+    "keyword": "washed process",
+    "categories": [
+      "harvest"
+    ],
+    "description": "After the coffee cherries pass through a de-pulping process, they are left to ferment in a trough of water. Beans with undesirable properties float to the top and are removed. Finally, the beans are dried. Coffee that goes through a wash process usually have a more intense acidity profile."
+  }
+]
