@@ -4,11 +4,6 @@ on:
   push:
     branches: ["main"]
 
-# Serialize deploys so back-to-back merges don't fight over the S3 state lock.
-concurrency:
-  group: terraform-deploy
-  cancel-in-progress: false
-
 permissions:
   contents: read
   # Required to mint the OIDC token used to assume the AWS deploy role.
