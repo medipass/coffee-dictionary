@@ -25,13 +25,13 @@ CORS is disabled by default and opt-in via the `CORS_HOST` environment variable.
 ## Terraform (Lambda)
 
 ```bash
-pnpm run build          # compile TypeScript first — Terraform zips dist/ + node_modules/
+pnpm run build          # compile TypeScript first — OpenTofu zips dist/ + node_modules/
 cd terraform
-terraform init
-terraform apply         # outputs the API Gateway URL
+tofu init
+tofu apply              # outputs the API Gateway URL
 ```
 
-The Terraform config (`terraform/`) packages the built app, creates a Lambda function (`dist/lambda.handler`, Node 18), and wires it to an API Gateway v2 HTTP API. `CORS_HOST` and `function_name` are overridable via variables.
+The OpenTofu config (`terraform/`) packages the built app, creates a Lambda function (`dist/lambda.handler`, Node 22), and wires it to an API Gateway v2 HTTP API. `CORS_HOST` and `function_name` are overridable via variables.
 
 ## Docker
 

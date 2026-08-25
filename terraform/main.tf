@@ -1,7 +1,8 @@
 terraform {
+  required_version = ">= 1.8.0"
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
+      source  = "registry.opentofu.org/hashicorp/aws"
       version = "~> 5.0"
     }
   }
@@ -11,7 +12,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Zip dist/ + node_modules/ for Lambda — run `pnpm run build` before `terraform apply`
+# Zip dist/ + node_modules/ for Lambda — run `pnpm run build` before `tofu apply`
 data "archive_file" "app" {
   type        = "zip"
   source_dir  = "${path.module}/.."
