@@ -34,5 +34,10 @@
       "harvest"
     ],
     "description": "After the coffee cherries pass through a de-pulping process, they are left to ferment in a trough of water. Beans with undesirable properties float to the top and are removed. Finally, the beans are dried. Coffee that goes through a wash process usually have a more intense acidity profile."
+  },
+  {
+    "keyword": "malith",
+    "categories": ["malith"],
+    "description": "This is malith test description"
   }
 ]
