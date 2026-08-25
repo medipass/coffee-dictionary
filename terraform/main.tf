@@ -54,7 +54,7 @@ resource "aws_lambda_function" "app" {
   function_name    = var.function_name
   role             = aws_iam_role.lambda.arn
   handler          = "dist/lambda.handler"
-  runtime          = "nodejs18.x"
+  runtime          = "nodejs22.x"
   source_code_hash = data.archive_file.app.output_base64sha256
 
   environment {
