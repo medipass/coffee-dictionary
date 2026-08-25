@@ -8,9 +8,14 @@
 #     even if it did.
 #   - github_actions: assumable only from a `push` to `refs/heads/main`
 #     (i.e. after merge), full read/write for `tofu apply`.
+# GitHub's OIDC `sub` claim identifies the repo by immutable owner/repo
+# database IDs, not by name — e.g. "repo:mdraj2@46102339/coffee-dictionary@1345664037:...",
+# not "repo:mdraj2/coffee-dictionary:...". Confirmed via CloudTrail against a
+# live AssumeRoleWithWebIdentity AccessDenied event; the plain name form
+# silently never matches.
 variable "github_repo" {
-  description = "GitHub repo in \"owner/name\" form allowed to assume the deploy roles"
-  default     = "mdraj2/coffee-dictionary"
+  description = "GitHub repo as it appears in the OIDC sub claim: \"owner@ownerId/name@repoId\""
+  default     = "mdraj2@46102339/coffee-dictionary@1345664037"
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
