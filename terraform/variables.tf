@@ -1,5 +1,5 @@
 variable "aws_region" {
-  default = "us-east-1"
+  default = "ap-southeast-2"
 }
 
 variable "function_name" {
