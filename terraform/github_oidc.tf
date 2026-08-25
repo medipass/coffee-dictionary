@@ -42,6 +42,14 @@ resource "aws_iam_role" "github_actions" {
           # production`) gets an "environment:<name>" sub claim, not the
           # ref-based one — confirmed via CloudTrail against a live
           # AssumeRoleWithWebIdentity AccessDenied event.
+          #
+          # This has silently regressed once already: a branch created from
+          # (or reverted to) a stale local `origin/main` — i.e. without
+          # `git fetch` first — can carry an older version of this file, and
+          # `tofu apply` from it will push the old condition back over this
+          # one with no error, since Terraform has no idea what "correct"
+          # means beyond "matches my config". Always `git fetch origin`
+          # immediately before branching off or restoring from `origin/main`.
           "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
         }
       }
