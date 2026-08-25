@@ -35,10 +35,15 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      # Re-install prod-only to match what the zip would actually contain on
-      # apply — devDependencies would otherwise show up as spurious drift.
-      - name: Prune to production dependencies
-        run: pnpm install --prod --frozen-lockfile
+      # Reinstall prod-only from a clean node_modules to match what the zip
+      # would actually contain on apply. Pruning in place over the existing
+      # install can leave dangling node_modules/.bin symlinks pointing at
+      # now-removed dev packages, which breaks archive_file — hence rm -rf
+      # instead of a plain prune.
+      - name: Reinstall production-only dependencies
+        run: |
+          rm -rf node_modules
+          pnpm install --prod --frozen-lockfile
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@v1

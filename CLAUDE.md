@@ -25,15 +25,15 @@ CORS is disabled by default and opt-in via the `CORS_HOST` environment variable.
 ## Terraform (Lambda)
 
 ```bash
-pnpm run build           # compile TypeScript first — OpenTofu zips dist/ + node_modules/
-pnpm install --prod      # drop devDependencies before packaging — see note below
+pnpm run build                       # compile TypeScript first — OpenTofu zips dist/ + node_modules/
+rm -rf node_modules && pnpm install --prod   # drop devDependencies before packaging — see note below
 cd terraform
 tofu init
 tofu apply                # outputs the API Gateway URL
 pnpm install               # back at repo root: restore devDependencies for local dev
 ```
 
-**`pnpm install --prod` before every apply is required, not optional.** The Lambda zip is the whole `node_modules/`; with devDependencies included (`typescript` alone is ~65MB) it exceeds Lambda's direct-upload size limit and `UpdateFunctionCode` fails with `RequestEntityTooLargeException`. Re-run a plain `pnpm install` afterwards to get `nodemon`/`ts-node`/`typescript` back for local dev.
+**A clean prod-only `node_modules` before every apply is required, not optional.** The Lambda zip is the whole `node_modules/`; with devDependencies included (`typescript` alone is ~65MB) it exceeds Lambda's direct-upload size limit and `UpdateFunctionCode` fails with `RequestEntityTooLargeException`. It has to be `rm -rf node_modules && pnpm install --prod`, not a plain `pnpm install --prod` over the existing install — pruning in place can leave dangling `node_modules/.bin` symlinks pointing at now-removed dev packages, which breaks `archive_file` (`error creating archive: ... lstat ... no such file or directory`). Re-run a plain `pnpm install` afterwards to get `nodemon`/`ts-node`/`typescript` back for local dev.
 
 `pnpm-workspace.yaml` sets `nodeLinker: hoisted`. This isn't optional either: pnpm's default symlinked layout is incompatible with how OpenTofu's `archive_file` zips the directory (it copies symlinked files' content without preserving the sibling directory they resolve against), which silently breaks `aws-serverless-express`'s runtime dependency on `@vendia/serverless-express`.
 

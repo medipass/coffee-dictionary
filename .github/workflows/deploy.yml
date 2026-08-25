@@ -42,10 +42,15 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      # Re-install prod-only so the Lambda zip doesn't ship devDependencies
-      # (typescript alone is ~65MB and pushes past Lambda's upload size limit).
-      - name: Prune to production dependencies
-        run: pnpm install --prod --frozen-lockfile
+      # Reinstall prod-only from a clean node_modules so the Lambda zip doesn't
+      # ship devDependencies (typescript alone is ~65MB, past Lambda's upload
+      # limit). Pruning in place over the existing install can leave dangling
+      # node_modules/.bin symlinks pointing at now-removed dev packages, which
+      # breaks archive_file — hence the rm -rf instead of a plain prune.
+      - name: Reinstall production-only dependencies
+        run: |
+          rm -rf node_modules
+          pnpm install --prod --frozen-lockfile
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@v1

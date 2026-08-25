@@ -87,6 +87,18 @@ resource "aws_iam_role_policy" "github_actions_plan" {
         Resource = "arn:aws:iam::*:role/${var.function_name}-role"
       },
       {
+        # Both roles are themselves in state (aws_iam_openid_connect_provider.github,
+        # aws_iam_role.github_actions*), so every plan/apply refreshes them too.
+        Sid    = "OidcSelfRead"
+        Effect = "Allow"
+        Action = ["iam:GetOpenIDConnectProvider", "iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies"]
+        Resource = [
+          aws_iam_openid_connect_provider.github.arn,
+          "arn:aws:iam::*:role/${var.function_name}-github-actions",
+          "arn:aws:iam::*:role/${var.function_name}-github-actions-plan",
+        ]
+      },
+      {
         Sid      = "ApiGateway"
         Effect   = "Allow"
         Action   = ["apigateway:GET"]
@@ -167,6 +179,16 @@ resource "aws_iam_role_policy" "github_actions" {
           "iam:ListAttachedRolePolicies",
         ]
         Resource = "arn:aws:iam::*:role/${var.function_name}-role"
+      },
+      {
+        Sid    = "OidcSelfRead"
+        Effect = "Allow"
+        Action = ["iam:GetOpenIDConnectProvider", "iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies"]
+        Resource = [
+          aws_iam_openid_connect_provider.github.arn,
+          "arn:aws:iam::*:role/${var.function_name}-github-actions",
+          "arn:aws:iam::*:role/${var.function_name}-github-actions-plan",
+        ]
       },
       {
         Sid      = "ApiGateway"
