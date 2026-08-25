@@ -1,10 +1,10 @@
 name: Deploy
 
 on:
-  pull_request:
+  push:
     branches: ["main"]
 
-# Serialize deploys so concurrent PR pushes don't fight over the S3 state lock.
+# Serialize deploys so back-to-back merges don't fight over the S3 state lock.
 concurrency:
   group: terraform-deploy
   cancel-in-progress: false
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     # Requires a reviewer configured on this environment (repo Settings > Environments
     # > production > required reviewers) — the job pauses for manual approval here
-    # before `tofu apply` runs, since this repo is public and PRs deploy to shared prod.
+    # before `tofu apply` runs, since this repo is public.
     environment: production
     steps:
       - name: Checkout repository

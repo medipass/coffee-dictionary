@@ -1,8 +1,15 @@
-# Lets GitHub Actions assume an AWS role via OIDC — no long-lived AWS keys
-# stored in GitHub. Scoped to pull_request runs on this repo only.
-
+# Lets GitHub Actions assume AWS roles via OIDC — no long-lived AWS keys
+# stored in GitHub. Two separate roles, deliberately not one:
+#
+#   - github_actions_plan: assumable only from `pull_request` runs, read-only.
+#     `pull_request` (not `pull_request_target`) executes the workflow file AS
+#     COMMITTED IN THE PR, so a PR could edit the workflow to run `apply`
+#     instead of `plan` — this role's policy can't do anything destructive
+#     even if it did.
+#   - github_actions: assumable only from a `push` to `refs/heads/main`
+#     (i.e. after merge), full read/write for `tofu apply`.
 variable "github_repo" {
-  description = "GitHub repo in \"owner/name\" form allowed to assume the deploy role"
+  description = "GitHub repo in \"owner/name\" form allowed to assume the deploy roles"
   default     = "mdraj2/coffee-dictionary"
 }
 
@@ -26,10 +33,85 @@ resource "aws_iam_role" "github_actions" {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
         StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/main"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role" "github_actions_plan" {
+  name = "${var.function_name}-github-actions-plan"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+        StringLike = {
           "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:pull_request"
         }
       }
     }]
+  })
+}
+
+# Read-only mirror of aws_iam_role_policy.github_actions below, for PR plans.
+resource "aws_iam_role_policy" "github_actions_plan" {
+  name = "${var.function_name}-plan"
+  role = aws_iam_role.github_actions_plan.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "LambdaFunction"
+        Effect   = "Allow"
+        Action   = ["lambda:GetFunction", "lambda:GetPolicy", "lambda:ListVersionsByFunction", "lambda:ListTags"]
+        Resource = "arn:aws:lambda:${var.aws_region}:*:function:${var.function_name}"
+      },
+      {
+        Sid      = "LambdaExecutionRole"
+        Effect   = "Allow"
+        Action   = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies"]
+        Resource = "arn:aws:iam::*:role/${var.function_name}-role"
+      },
+      {
+        Sid      = "ApiGateway"
+        Effect   = "Allow"
+        Action   = ["apigateway:GET"]
+        Resource = "arn:aws:apigateway:${var.aws_region}::/apis*"
+      },
+      {
+        Sid      = "CloudFront"
+        Effect   = "Allow"
+        Action   = ["cloudfront:GetDistribution", "cloudfront:ListTagsForResource"]
+        Resource = "*"
+      },
+      {
+        Sid      = "TerraformStateRead"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "arn:aws:s3:::coffee-dictionary-tfstate-699799608914/coffee-dictionary/terraform.tfstate"
+      },
+      {
+        Sid      = "TerraformStateLock"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = "arn:aws:s3:::coffee-dictionary-tfstate-699799608914/coffee-dictionary/terraform.tfstate.tflock"
+      },
+      {
+        Sid      = "TerraformStateBucket"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::coffee-dictionary-tfstate-699799608914"
+      },
+    ]
   })
 }
 
@@ -117,6 +199,11 @@ resource "aws_iam_role_policy" "github_actions" {
 }
 
 output "github_actions_role_arn" {
-  description = "Role ARN for the GitHub Actions workflow to assume via OIDC"
+  description = "Role ARN the apply workflow (push to main) assumes via OIDC"
   value       = aws_iam_role.github_actions.arn
+}
+
+output "github_actions_plan_role_arn" {
+  description = "Role ARN the plan workflow (pull_request) assumes via OIDC"
+  value       = aws_iam_role.github_actions_plan.arn
 }

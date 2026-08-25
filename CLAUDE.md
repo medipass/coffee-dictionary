@@ -39,9 +39,12 @@ pnpm install               # back at repo root: restore devDependencies for loca
 
 The OpenTofu config (`terraform/`) packages the built app, creates a Lambda function (`dist/lambda.handler`, Node 22), and wires it to an API Gateway v2 HTTP API. `CORS_HOST` and `function_name` are overridable via variables. State lives in the `coffee-dictionary-tfstate-699799608914` S3 bucket (`terraform/main.tf` backend block), not locally — this is required for `.github/workflows/deploy.yml` (below) and local runs to share the same state.
 
-### CI deploy
+### CI: plan on PR, apply on merge
 
-`.github/workflows/deploy.yml` runs this same build → prune → `tofu apply` sequence on every PR targeting `main`, authenticating to AWS via OIDC (`aws_iam_role.github_actions` in `terraform/github_oidc.tf`, trust-scoped to `pull_request` runs on this repo only — no AWS keys stored in GitHub). Concurrent PR runs are serialized (`concurrency: terraform-deploy`) so they don't race on the state lock.
+- `.github/workflows/plan.yml` — every PR targeting `main` runs build → prune → `tofu plan`, posting the result as a PR comment (updated in place on new pushes). Uses `aws_iam_role.github_actions_plan`, a **read-only** role.
+- `.github/workflows/deploy.yml` — every push to `main` (i.e. after merge) runs build → prune → `tofu apply -auto-approve`. Uses `aws_iam_role.github_actions`, the read/write role, and requires manual approval via the `production` GitHub Environment (repo Settings > Environments) since this repo is public. Runs are serialized (`concurrency: terraform-deploy`) so back-to-back merges don't race on the state lock.
+
+Both roles are defined in `terraform/github_oidc.tf` and assumed via GitHub OIDC — no AWS keys stored in GitHub. The plan role is intentionally read-only rather than reusing the apply role: `pull_request` runs execute the workflow file *as committed in the PR*, so a PR that edited the workflow to call `apply` instead of `plan` still couldn't mutate anything — the IAM policy itself blocks it, not just the workflow's own logic.
 
 ## Docker
 
