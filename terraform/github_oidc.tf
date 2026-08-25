@@ -77,7 +77,7 @@ resource "aws_iam_role_policy" "github_actions_plan" {
       {
         Sid      = "LambdaFunction"
         Effect   = "Allow"
-        Action   = ["lambda:GetFunction", "lambda:GetPolicy", "lambda:ListVersionsByFunction", "lambda:ListTags"]
+        Action   = ["lambda:GetFunction", "lambda:GetFunctionCodeSigningConfig", "lambda:GetPolicy", "lambda:ListVersionsByFunction", "lambda:ListTags"]
         Resource = "arn:aws:lambda:${var.aws_region}:*:function:${var.function_name}"
       },
       {
@@ -147,6 +147,7 @@ resource "aws_iam_role_policy" "github_actions" {
         Effect = "Allow"
         Action = [
           "lambda:GetFunction",
+          "lambda:GetFunctionCodeSigningConfig",
           "lambda:CreateFunction",
           "lambda:UpdateFunctionCode",
           "lambda:UpdateFunctionConfiguration",
