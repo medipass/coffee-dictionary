@@ -12,9 +12,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Requires a reviewer configured on this environment (repo Settings > Environments
-    # > production > required reviewers) — the job pauses for manual approval here
-    # before `tofu apply` runs, since this repo is public.
+    # No required-reviewer rule on this environment — merge access to main is
+    # already restricted to trusted collaborators, so an extra approval click
+    # here would just be the same person approving their own merge. Kept for
+    # deployment-history tracking (repo Settings > Environments > production).
     environment: production
     steps:
       - name: Checkout repository
