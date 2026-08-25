@@ -25,13 +25,23 @@ CORS is disabled by default and opt-in via the `CORS_HOST` environment variable.
 ## Terraform (Lambda)
 
 ```bash
-pnpm run build          # compile TypeScript first — OpenTofu zips dist/ + node_modules/
+pnpm run build           # compile TypeScript first — OpenTofu zips dist/ + node_modules/
+pnpm install --prod      # drop devDependencies before packaging — see note below
 cd terraform
 tofu init
-tofu apply              # outputs the API Gateway URL
+tofu apply                # outputs the API Gateway URL
+pnpm install               # back at repo root: restore devDependencies for local dev
 ```
 
-The OpenTofu config (`terraform/`) packages the built app, creates a Lambda function (`dist/lambda.handler`, Node 22), and wires it to an API Gateway v2 HTTP API. `CORS_HOST` and `function_name` are overridable via variables.
+**`pnpm install --prod` before every apply is required, not optional.** The Lambda zip is the whole `node_modules/`; with devDependencies included (`typescript` alone is ~65MB) it exceeds Lambda's direct-upload size limit and `UpdateFunctionCode` fails with `RequestEntityTooLargeException`. Re-run a plain `pnpm install` afterwards to get `nodemon`/`ts-node`/`typescript` back for local dev.
+
+`pnpm-workspace.yaml` sets `nodeLinker: hoisted`. This isn't optional either: pnpm's default symlinked layout is incompatible with how OpenTofu's `archive_file` zips the directory (it copies symlinked files' content without preserving the sibling directory they resolve against), which silently breaks `aws-serverless-express`'s runtime dependency on `@vendia/serverless-express`.
+
+The OpenTofu config (`terraform/`) packages the built app, creates a Lambda function (`dist/lambda.handler`, Node 22), and wires it to an API Gateway v2 HTTP API. `CORS_HOST` and `function_name` are overridable via variables. State lives in the `coffee-dictionary-tfstate-699799608914` S3 bucket (`terraform/main.tf` backend block), not locally — this is required for `.github/workflows/deploy.yml` (below) and local runs to share the same state.
+
+### CI deploy
+
+`.github/workflows/deploy.yml` runs this same build → prune → `tofu apply` sequence on every PR targeting `main`, authenticating to AWS via OIDC (`aws_iam_role.github_actions` in `terraform/github_oidc.tf`, trust-scoped to `pull_request` runs on this repo only — no AWS keys stored in GitHub). Concurrent PR runs are serialized (`concurrency: terraform-deploy`) so they don't race on the state lock.
 
 ## Docker
 
