@@ -68,7 +68,27 @@ resource "aws_lambda_function" "app" {
 resource "aws_apigatewayv2_api" "app" {
   name          = var.function_name
   protocol_type = "HTTP"
-  target        = aws_lambda_function.app.invoke_arn
+}
+
+# payload_format_version = "1.0" — aws-serverless-express only understands the
+# REST-API-shaped event (event.path / event.httpMethod), not HTTP API's 2.0 event.
+resource "aws_apigatewayv2_integration" "app" {
+  api_id                 = aws_apigatewayv2_api.app.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.app.invoke_arn
+  payload_format_version = "1.0"
+}
+
+resource "aws_apigatewayv2_route" "app" {
+  api_id    = aws_apigatewayv2_api.app.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.app.id}"
+}
+
+resource "aws_apigatewayv2_stage" "app" {
+  api_id      = aws_apigatewayv2_api.app.id
+  name        = "$default"
+  auto_deploy = true
 }
 
 resource "aws_lambda_permission" "apigw" {
@@ -77,4 +97,46 @@ resource "aws_lambda_permission" "apigw" {
   function_name = aws_lambda_function.app.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.app.execution_arn}/*/*"
+}
+
+# HTTP APIs (apigatewayv2) can't attach WAF or a resource policy, so geo-restriction
+# happens at a CloudFront distribution in front of the API instead.
+resource "aws_cloudfront_distribution" "app" {
+  enabled = true
+  comment = "${var.function_name} — geo-restricted to Australia"
+
+  origin {
+    domain_name = trimprefix(aws_apigatewayv2_api.app.api_endpoint, "https://")
+    origin_id   = "apigw"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "apigw"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods         = ["GET", "HEAD"]
+
+    # Managed policies: CachingDisabled + AllViewerExceptHostHeader — pass every
+    # request straight through to the API, letting CloudFront set the Host header.
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "whitelist"
+      locations        = ["AU"]
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 }
