@@ -1,0 +1,72 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+# Serialize deploys so back-to-back merges don't fight over the S3 state lock.
+concurrency:
+  group: terraform-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Required to mint the OIDC token used to assume the AWS deploy role.
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Requires a reviewer configured on this environment (repo Settings > Environments
+    # > production > required reviewers) — the job pauses for manual approval here
+    # before `tofu apply` runs, since this repo is public.
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      # Reinstall prod-only from a clean node_modules so the Lambda zip doesn't
+      # ship devDependencies (typescript alone is ~65MB, past Lambda's upload
+      # limit). Pruning in place over the existing install can leave dangling
+      # node_modules/.bin symlinks pointing at now-removed dev packages, which
+      # breaks archive_file — hence the rm -rf instead of a plain prune.
+      - name: Reinstall production-only dependencies
+        run: |
+          rm -rf node_modules
+          pnpm install --prod --frozen-lockfile
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.12.6"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::699799608914:role/coffee-dictionary-github-actions
+          aws-region: ap-southeast-2
+
+      - name: Terraform init
+        working-directory: terraform
+        run: tofu init -input=false
+
+      - name: Terraform apply
+        working-directory: terraform
+        run: tofu apply -auto-approve -input=false
