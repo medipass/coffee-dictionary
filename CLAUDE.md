@@ -48,4 +48,4 @@ Both roles are defined in `terraform/github_oidc.tf` and assumed via GitHub OIDC
 
 ## Docker
 
-Pushing to `main` or a semver tag (`v*.*.*`) triggers the GitHub Actions workflow (`.github/workflows/docker-publish.yml`), which builds and pushes a Docker image to GitHub Container Registry (`ghcr.io`). PRs only build — they don't push. The Docker image runs the compiled output: `node dist/index.js`.
+The `Dockerfile` builds and runs the compiled output (`node dist/index.js`) locally — there's no CI workflow publishing it anywhere.

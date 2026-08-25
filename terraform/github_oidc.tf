@@ -38,7 +38,11 @@ resource "aws_iam_role" "github_actions" {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/main"
+          # A job targeting a GitHub Environment (this one uses `environment:
+          # production`) gets an "environment:<name>" sub claim, not the
+          # ref-based one — confirmed via CloudTrail against a live
+          # AssumeRoleWithWebIdentity AccessDenied event.
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
         }
       }
     }]
