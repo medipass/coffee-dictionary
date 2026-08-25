@@ -22,6 +22,17 @@ The Express app is defined once in `src/server.ts` and shared between two deploy
 
 CORS is disabled by default and opt-in via the `CORS_HOST` environment variable.
 
-## Deployment
+## Terraform (Lambda)
+
+```bash
+pnpm run build          # compile TypeScript first — OpenTofu zips dist/ + node_modules/
+cd terraform
+tofu init
+tofu apply              # outputs the API Gateway URL
+```
+
+The OpenTofu config (`terraform/`) packages the built app, creates a Lambda function (`dist/lambda.handler`, Node 22), and wires it to an API Gateway v2 HTTP API. `CORS_HOST` and `function_name` are overridable via variables.
+
+## Docker
 
 Pushing to `main` or a semver tag (`v*.*.*`) triggers the GitHub Actions workflow (`.github/workflows/docker-publish.yml`), which builds and pushes a Docker image to GitHub Container Registry (`ghcr.io`). PRs only build — they don't push. The Docker image runs the compiled output: `node dist/index.js`.
